@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Heatmap Demo with Filters</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            
+        }
+        .filter-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+        .filter-group label {
+            min-width: 100px;
+        }
+        #heatmap-container {
+            width: 800px;
+            height: 600px;
+            border: 1px solid #ddd;
+            position: relative;
+            background-color: white;
+            border-radius: 8px;
+            margin: 0 auto;
+        }
+        h1 {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            cursor: default;
+        }
+        input[type="datetime-local"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #typeGraph {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <div class="filter-group">
+                <label for="start-time">Da:</label>
+                <input type="datetime-local" id="start-time">
+               
+                <label for="end-time">A:</label>
+                <input type="datetime-local" id="end-time">
+               
+                <button onclick="applyFilters()">Apply Filters</button>
+                <button onclick="resetFilters()">Reset filters</button>
+            </div>
+        </div>
+        <div class="controls">
+            <div class="filter-group">
+                <button onclick="resetDataHeatMap()"> reset click in canvas </button>
+                <button onclick="dowloadData()"> dowload heatmap data </button>
+                <button onclick="viewALLData()"> view all click </button>
+            </div>
+        </div>
+
+
+        <div id="heatmap-container">
+            <h1> add new click </h1>
+        </div>
+
+
+
+
+        <div>
+            <h1 id="clickCount"> </h1>
+        </div>
+
+        <div id="typeGraph">
+            <button onclick="changeGraphType('bar')"> bar </button>
+            <button onclick="changeGraphType('line')"> line </button>
+            <button onclick="changeGraphType('doughnut')"> doughnut </button>
+            <button onclick="changeGraphType('pie')"> pie </button>
+            <button onclick="changeGraphType('radar')"> radar </button>
+            <button onclick="changeGraphType('polarArea')"> polarArea </button>
+        </div>
+
+        <canvas id="statsChart" width="400" height="200"></canvas>
+    </div>
+   
+    <script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/build/heatmap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let allData = []; // Store all data points
+        let typeGraph = 'bar';
+        let chartInstance;
+        
+       
+        // Initialize heatmap
+        const heatmapInstance = h337.create({
+            container: document.querySelector('#heatmap-container'),
+            radius: 25,
+            maxOpacity: .6,
+            minOpacity: 0,
+            blur: .75
+        });
+
+        function resetDataHeatMap(){
+            heatmapInstance.setData({ data: [] });
+        }
+
+
+        // Filter and display data
+        function filterAndDisplayData(startTime, endTime) {
+            heatmapInstance.setData({ data: [] }); // Clear current data
+            let ST="";
+            let ET="";
+           
+            const filteredData = allData.filter(point => {
+                const pointTime = new Date(point.timestamp);
+
+                return (!startTime || pointTime >= startTime) &&
+                       (!endTime || pointTime <= endTime);
+            });
+
+            if(startTime!=null){
+                console.log(startTime)
+                ST+=startTime.toString().split(" ")[2]
+                ST+="/"
+                ST+=startTime.toString().split(" ")[1]
+                ST+="/"
+                ST+=startTime.toString().split(" ")[3]
+                ST+="("+startTime.toString().split(" ")[4]+")"
+            }
+            if(endTime!=null){
+                ET+=endTime.toString().split(" ")[2]
+                ET+="/"
+                ET+=endTime.toString().split(" ")[1]
+                ET+="/"
+                ET+=endTime.toString().split(" ")[3]
+                ET+="("+endTime.toString().split(" ")[4]+")"
+            }
+
+            document.getElementById('clickCount').innerHTML = "number of click from "+ST+ " to " + ET+" : "+ filteredData.length;
+
+            filteredData.forEach(point => {
+                heatmapInstance.addData({
+                    x: point.x,
+                    y: point.y,
+                    value: 1
+                });
+            });
+        }
+
+
+        // Apply filters button handler
+        function applyFilters() {
+            const startTime = document.getElementById('start-time').value;
+            const endTime = document.getElementById('end-time').value;
+           
+            filterAndDisplayData(
+                startTime ? new Date(startTime) : null,
+                endTime ? new Date(endTime) : null
+            );
+        }
+
+
+        // Reset filters button handler
+        function resetFilters() {
+            document.getElementById('start-time').value = '';
+            document.getElementById('end-time').value = '';
+            filterAndDisplayData(null, null);
+        }
+
+        function changeGraphType(newType) {
+            let typeGraph = newType;
+            chartInstance.destroy();
+            createGraph(typeGraph);
+
+        }
+
+
+        // Click handler
+        document.getElementById('heatmap-container').addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const timestamp = new Date().toISOString();
+
+
+            // Add data to heatmap
+            const dataPoint = {
+                x: Math.round(x),
+                y: Math.round(y),
+                value: 1,
+                timestamp: timestamp
+            };
+           
+            allData.push(dataPoint); // Add to local storage
+           
+            // Only show if within current filter
+            const startTime = document.getElementById('start-time').value;
+            const endTime = document.getElementById('end-time').value;
+            const pointTime = new Date(timestamp);
+           
+            if ((!startTime || pointTime >= new Date(startTime)) &&
+                (!endTime || pointTime <= new Date(endTime))) {
+                heatmapInstance.addData({
+                    x: dataPoint.x,
+                    y: dataPoint.y,
+                    value: 1
+                });
+            }
+
+
+            // Send to backend
+            fetch('http://localhost:50000/api/clicks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataPoint)
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Success!');
+                }
+            })
+            .catch(console.error);
+        });
+
+
+        // Load initial data
+        function viewALLData(){
+            fetch('http://localhost:50000/api/clicks')
+            .then(response => response.json())
+            .then(data => {
+                allData = data; // Store all data
+                filterAndDisplayData(null, null); // Display all data initially
+                Nclick=allData.length;
+                document.getElementById('clickCount').innerHTML = "total number click: "+Nclick;
+                console.log(allData)
+            })
+            .catch(console.error);
+        };
+        viewALLData()
+        
+
+        function dowloadData(){
+            fetch('http://localhost:50000/api/clicks/csv')
+            .then(response => response.blob())
+            .then(blob => {
+                const file = new Blob([blob], { type: 'text/csv' });
+            
+                // Usa l'API FileSaver.js per salvare il file direttamente
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(file);  // Crea un URL per il blob
+                link.download = 'file.csv';  // Imposta il nome del file
+                
+                // Simula il clic senza visualizzare il link
+                link.click();
+
+                // Pulisce l'oggetto URL temporaneo
+                URL.revokeObjectURL(link.href);
+            })
+            .catch(error => console.error(error));
+        }
+
+        function createGraph(typeGraph){
+            fetch('http://localhost:50000/api/clicks/stats')
+        .then(response => response.json())
+        .then(data => {
+
+            const labels = data.map(item => {item.date
+                let day = item.date.split('-')[2]
+                let mounth = item.date.split('-')[1]
+                let year = item.date.split('-')[0]
+                return day + '-' + mounth + '-' + year
+
+            });
+            console.log('labels',labels)
+            lab=labels.reverse()
+
+            const values = data.map(item => item.count);
+            console.log('values',values)
+            val=values.reverse()
+            
+
+            ctx = document.getElementById('statsChart').getContext('2d');
+            chartInstance=new Chart(ctx, {
+                type: `${typeGraph}`,
+                data: {
+                    labels: lab,
+                    datasets: [{
+                        label: 'Numero di clic',
+                        data: val,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        })
+        .catch(error => console.error('Errore durante il caricamento delle statistiche:', error));
+        }
+
+        createGraph(typeGraph)
+
+
+
+
+    </script>
+</body>
+</html>
